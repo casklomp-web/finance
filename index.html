@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FinanciëleFit — Huishoud Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+<link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;FinanciëleFit&quot;,&quot;short_name&quot;:&quot;FinFit&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%230a0e1a&quot;,&quot;theme_color&quot;:&quot;%236366f1&quot;}">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;background:#0a0e1a;color:#e2e8f0;font-family:'DM Sans',sans-serif}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.cd{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:20px;animation:slideIn .3s ease}
+.bt{border:none;padding:8px 16px;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .15s}
+.bt:hover{transform:translateY(-1px)}
+.bp{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white}
+.bg{background:rgba(255,255,255,.06);color:#e2e8f0}.bg:hover{background:rgba(255,255,255,.12)}
+.bd{background:rgba(239,68,68,.15);color:#ef4444}.bd:hover{background:rgba(239,68,68,.25)}
+.tg{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+input,select{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px 12px;border-radius:8px;font-family:inherit;font-size:13px;outline:none}
+input:focus,select:focus{border-color:#6366f1}
+.ni{padding:10px 16px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap}
+.na{background:rgba(99,102,241,.2);color:#a5b4fc}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.mc{background:#1a1f3a;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;max-width:520px;width:90%;max-height:80vh;overflow-y:auto}
+.ks{animation:fadeIn .5s ease}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-type="module">
+const{useState,useEffect,useCallback,useMemo,useRef}=React;
+const{PieChart,Pie,Cell,BarChart,Bar,LineChart,Line,XAxis,YAxis,Tooltip,ResponsiveContainer,CartesianGrid,Legend,AreaChart,Area}=Recharts;
+
+const MNL=["Jan","Feb","Mrt","Apr","Mei","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
+const FMNL=["Januari","Februari","Maart","April","Mei","Juni","Juli","Augustus","September","Oktober","November","December"];
+const CATS={
+  "Boodschappen":{icon:"🛒",color:"#2dd4bf",keywords:["albert heijn","jumbo","lidl","aldi","plus","dirk","ah ","spar","coop","deen","vomar","hoogvliet","picnic","crisp","gorillas","flink","getir"]},
+  "Wonen":{icon:"🏠",color:"#f472b6",keywords:["hypotheek","huur","mortgage","vve","woningcorporatie","eigen haard","vesteda"]},
+  "Energie":{icon:"⚡",color:"#fbbf24",keywords:["vattenfall","eneco","essent","greenchoice","energie","gas","elektra","nuon","budget energie","oxxio"]},
+  "Verzekeringen":{icon:"🛡️",color:"#818cf8",keywords:["zilveren kruis","cz","menzis","vgz","aegon","nationale nederlanden","nn ","centraal beheer","interpolis","univé","asr","achmea","verzeker"]},
+  "Transport":{icon:"🚗",color:"#fb923c",keywords:["shell","bp ","esso","total","tinq","tango","ns ","ov-chipkaart","translink","arriva","connexxion","anwb","rdw","parkeer","q-park"]},
+  "Abonnementen":{icon:"📱",color:"#a78bfa",keywords:["netflix","spotify","disney","amazon prime","videoland","hbo","kpn","vodafone","t-mobile","ziggo","odido","tele2","simpel"]},
+  "Horeca":{icon:"🍽️",color:"#f87171",keywords:["restaurant","cafe","mcdonalds","burger king","dominos","new york pizza","thuisbezorgd","uber eats","deliveroo","kfc","subway"]},
+  "Gezondheid":{icon:"💊",color:"#34d399",keywords:["apotheek","huisarts","tandarts","fysio","ziekenhuis","kruidvat","etos"]},
+  "Kleding":{icon:"👕",color:"#e879f9",keywords:["h&m","zara","primark","c&a","zalando","wehkamp","uniqlo","nike","adidas","decathlon"]},
+  "Kinderen":{icon:"👶",color:"#67e8f9",keywords:["kinderopvang","bso","kdv","gastouder","kinderdagverblijf","intertoys","speelgoed","prenatal","baby"]},
+  "Sparen":{icon:"💰",color:"#86efac",keywords:["spaarrekening","deposito","belegging"]},
+  "Inkomen":{icon:"💵",color:"#22c55e",keywords:["salaris","loon","gxo","werkgever","uitkering","toeslagen","belastingdienst teruggave","kinderbijslag","zorgtoeslag","huurtoeslag"]},
+  "Overig":{icon:"📦",color:"#94a3b8",keywords:[]}
+};
+const PAL=Object.values(CATS).map(c=>c.color);
+const SK={tx:"ff-tx",cat:"ff-cat",bud:"ff-bud",em:"ff-em",dbt:"ff-dbt"};
+
+function ld(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
+function sv(k,d){try{localStorage.setItem(k,JSON.stringify(d));}catch{}}
+
+function csvL(line){const r=[];let c="",q=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"')q=!q;else if((ch===","||ch===";")&&!q){r.push(c.trim());c="";}else c+=ch;}r.push(c.trim());return r;}
+function pD(raw){if(/^\d{8}$/.test(raw))return`${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`;if(/^\d{2}-\d{2}-\d{4}$/.test(raw)){const p=raw.split("-");return`${p[2]}-${p[1]}-${p[0]}`;}return raw;}
+
+function parseSNS(t){const ls=t.split("\n").filter(l=>l.trim());if(ls.length<2)return[];const h=csvL(ls[0]).map(x=>x.toLowerCase().replace(/"/g,"").trim());const di=h.findIndex(x=>x.includes("datum")),dsi=h.findIndex(x=>x.includes("omschrijving")||x.includes("naam")),ai=h.findIndex(x=>x.includes("bedrag")),abi=h.findIndex(x=>x.includes("af bij")||x.includes("af/bij"));return ls.slice(1).map((l,i)=>{const c=csvL(l).map(x=>x.replace(/"/g,"").trim());if(c.length<3)return null;let a=parseFloat((c[ai]||"0").replace(",","."));if(abi>=0&&c[abi]&&c[abi].toLowerCase().includes("af"))a=-Math.abs(a);else if(abi>=0&&c[abi]&&c[abi].toLowerCase().includes("bij"))a=Math.abs(a);return{id:`s-${i}-${Math.random().toString(36).slice(2,7)}`,date:pD(c[di]||""),description:c[dsi]||"Onbekend",amount:a,source:"SNS",category:null};}).filter(Boolean);}
+function parseICS(t){const ls=t.split("\n").filter(l=>l.trim());if(ls.length<2)return[];const h=csvL(ls[0]).map(x=>x.toLowerCase().replace(/"/g,"").trim());const di=h.findIndex(x=>x.includes("datum")),dsi=h.findIndex(x=>x.includes("omschrijving")),ai=h.findIndex(x=>x.includes("bedrag"));return ls.slice(1).map((l,i)=>{const c=csvL(l).map(x=>x.replace(/"/g,"").trim());if(c.length<3)return null;return{id:`i-${i}-${Math.random().toString(36).slice(2,7)}`,date:pD(c[di]||""),description:c[dsi]||"Onbekend",amount:-Math.abs(parseFloat((c[ai]||"0").replace(",","."))),source:"ICS",category:null};}).filter(Boolean);}
+
+function aC(d,cats){const l=d.toLowerCase();for(const[n,c]of Object.entries(cats)){if(n==="Overig")continue;for(const k of c.keywords)if(l.includes(k))return n;}return null;}
+const fmt=n=>new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR"}).format(n);
+const fD=d=>{const p=d.split("-");return`${p[2]}-${p[1]}-${p[0]}`;};
+const pct=n=>`${(n*100).toFixed(1)}%`;
+const tts={background:"#1a1f3a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#e2e8f0",fontSize:12};
+
+function Gauge({value,max,color,size=140,label}){const p=Math.min(value/Math.max(max,1),1);const angle=p*270;const r=size/2-12;const tr=a=>a*Math.PI/180;const arc=(s,e)=>{const sx=size/2+r*Math.cos(tr(s)),sy=size/2+r*Math.sin(tr(s)),ex=size/2+r*Math.cos(tr(e)),ey=size/2+r*Math.sin(tr(e));return`M${sx},${sy}A${r},${r},0,${(e-s)>180?1:0},1,${ex},${ey}`;};return React.createElement("svg",{width:size,height:size,viewBox:`0 0 ${size} ${size}`},React.createElement("path",{d:arc(-225,45),fill:"none",stroke:"rgba(255,255,255,0.08)",strokeWidth:10,strokeLinecap:"round"}),angle>0&&React.createElement("path",{d:arc(-225,-225+angle),fill:"none",stroke:color,strokeWidth:10,strokeLinecap:"round",style:{filter:`drop-shadow(0 0 8px ${color}50)`}}),React.createElement("text",{x:"50%",y:"46%",textAnchor:"middle",fill:"#e2e8f0",fontSize:size/4.5,fontWeight:"700",fontFamily:"'JetBrains Mono'"},pct(p)),React.createElement("text",{x:"50%",y:"64%",textAnchor:"middle",fill:"#94a3b8",fontSize:size/10},label));}
+
+function App(){
+  const[tx,setTx]=useState(()=>ld(SK.tx)||[]);
+  const[cats,setCats]=useState(()=>({...CATS,...(ld(SK.cat)||{})}));
+  const[budgets,setBudgets]=useState(()=>ld(SK.bud)||{});
+  const[view,setView]=useState("dashboard");
+  const[importMsg,setImportMsg]=useState(null);
+  const[selMonth,setSelMonth]=useState(()=>{const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;});
+  const[showCatModal,setShowCatModal]=useState(false);
+  const[selectedTx,setSelectedTx]=useState(null);
+  const[newCN,setNewCN]=useState("");const[newCK,setNewCK]=useState("");
+  const[nestMode,setNestMode]=useState(false);
+  const[showBM,setShowBM]=useState(false);const[editB,setEditB]=useState({});
+  const[fCat,setFCat]=useState("all");const[search,setSearch]=useState("");
+  const[em,setEm]=useState(()=>ld(SK.em)||{goal:5000,current:0,monthlyTarget:200,history:[]});
+  const[showEM,setShowEM]=useState(false);const[emIn,setEmIn]=useState("");
+  const[debts,setDebts]=useState(()=>ld(SK.dbt)||[]);
+  const[showDM,setShowDM]=useState(false);
+  const[dIn,setDIn]=useState({name:"",balance:"",rate:"",minPayment:"",type:"lening"});
+  const[dStrat,setDStrat]=useState("avalanche");
+  const[kSlide,setKSlide]=useState(0);const kRef=useRef(null);
+
+  useEffect(()=>{sv(SK.tx,tx);},[tx]);
+  useEffect(()=>{sv(SK.cat,cats);},[cats]);
+  useEffect(()=>{sv(SK.bud,budgets);},[budgets]);
+  useEffect(()=>{sv(SK.em,em);},[em]);
+  useEffect(()=>{sv(SK.dbt,debts);},[debts]);
+
+  const uncat=useMemo(()=>tx.filter(t=>!t.category),[tx]);
+
+  const handleImport=useCallback((e)=>{
+    const file=e.target.files[0];if(!file)return;const reader=new FileReader();
+    reader.onload=(ev)=>{const text=ev.target.result;const isSNS=file.name.toLowerCase().includes("sns")||text.toLowerCase().includes("af bij")||text.toLowerCase().includes("tegenrekening");
+    let parsed=(isSNS?parseSNS(text):parseICS(text)).map(t=>({...t,category:aC(t.description,cats)}));
+    const ex=new Set(tx.map(t=>`${t.date}-${t.description}-${t.amount}`));const fresh=parsed.filter(t=>!ex.has(`${t.date}-${t.description}-${t.amount}`));
+    setTx(p=>[...p,...fresh].sort((a,b)=>b.date.localeCompare(a.date)));const uc=fresh.filter(t=>!t.category).length;
+    setImportMsg(`✅ ${fresh.length} transacties${uc>0?` (${uc} zonder categorie)`:""}`);setTimeout(()=>setImportMsg(null),5000);};reader.readAsText(file);e.target.value="";
+  },[tx,cats]);
+
+  const asCat=(id,cat)=>setTx(p=>p.map(t=>t.id===id?{...t,category:cat}:t));
+  const addKw=(cat,kw)=>{setCats(p=>({...p,[cat]:{...p[cat],keywords:[...(p[cat]?.keywords||[]),kw.toLowerCase()]}}));setTx(p=>p.map(t=>!t.category&&t.description.toLowerCase().includes(kw.toLowerCase())?{...t,category:cat}:t));};
+  const mkCat=(name,kw)=>{setCats(p=>({...p,[name]:{icon:"📌",color:PAL[Object.keys(p).length%PAL.length],keywords:kw?[kw.toLowerCase()]:[]}}));if(kw)setTx(p=>p.map(t=>!t.category&&t.description.toLowerCase().includes(kw.toLowerCase())?{...t,category:name}:t));};
+
+  const addEmE=(amount,type)=>{const val=type==="deposit"?Math.abs(amount):-Math.abs(amount);setEm(p=>({...p,current:Math.max(0,p.current+val),history:[{date:new Date().toISOString().slice(0,10),amount:val,balance:Math.max(0,p.current+val)},...p.history].slice(0,50)}));};
+  const emMo=useMemo(()=>{if(em.current>=em.goal)return 0;if(em.monthlyTarget<=0)return Infinity;return Math.ceil((em.goal-em.current)/em.monthlyTarget);},[em]);
+
+  const sDebts=useMemo(()=>{const d=[...debts];if(dStrat==="avalanche")d.sort((a,b)=>b.rate-a.rate);else d.sort((a,b)=>a.balance-b.balance);return d;},[debts,dStrat]);
+  const totD=useMemo(()=>debts.reduce((s,d)=>s+d.balance,0),[debts]);
+  const totM=useMemo(()=>debts.reduce((s,d)=>s+d.minPayment,0),[debts]);
+  const dTL=useMemo(()=>{if(debts.length===0)return[];const tl=[];let b=debts.map(d=>({...d,rem:d.balance}));let mo=0;while(b.some(d=>d.rem>0)&&mo<360){mo++;let extra=0;const o=dStrat==="avalanche"?[...b].sort((a,b)=>b.rate-a.rate):[...b].sort((a,c)=>a.rem-c.rem);o.forEach(d=>{if(d.rem<=0)return;d.rem+=d.rem*(d.rate/100/12);const pay=Math.min(d.rem,d.minPayment+extra);d.rem-=pay;if(d.rem<=.01){extra+=d.minPayment;d.rem=0;}else extra=0;});b=o;if(mo%3===0||mo===1||!b.some(d=>d.rem>0))tl.push({month:mo,total:Math.round(b.reduce((s,d)=>s+d.rem,0)),label:`M${mo}`});}return tl;},[debts,dStrat]);
+  const dFree=useMemo(()=>{if(dTL.length===0)return null;const l=dTL[dTL.length-1];if(l.total>0)return null;const d=new Date();d.setMonth(d.getMonth()+l.month);return`${FMNL[d.getMonth()]} ${d.getFullYear()}`;},[dTL]);
+
+  const mTx=useMemo(()=>tx.filter(t=>t.date.startsWith(selMonth)),[tx,selMonth]);
+  const st=useMemo(()=>{const i=mTx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);const e=mTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);return{income:i,expenses:e,balance:i-e};},[mTx]);
+  const cB=useMemo(()=>{const m={};mTx.filter(t=>t.amount<0&&t.category&&t.category!=="Inkomen").forEach(t=>{m[t.category]=(m[t.category]||0)+Math.abs(t.amount);});return Object.entries(m).map(([n,v])=>({name:n,value:Math.round(v*100)/100,color:cats[n]?.color||"#94a3b8",icon:cats[n]?.icon||"📦"})).sort((a,b)=>b.value-a.value);},[mTx,cats]);
+  const trend=useMemo(()=>{const m={};tx.forEach(t=>{const k=t.date.slice(0,7);if(!m[k])m[k]={month:k,income:0,expenses:0};if(t.amount>0)m[k].income+=t.amount;else m[k].expenses+=Math.abs(t.amount);});return Object.values(m).sort((a,b)=>a.month.localeCompare(b.month)).map(x=>({...x,label:MNL[parseInt(x.month.split("-")[1])-1]+"'"+x.month.split("-")[0].slice(2),income:Math.round(x.income),expenses:Math.round(x.expenses)}));},[tx]);
+  const fc=useMemo(()=>{if(trend.length<2)return[];const n=trend.length;const xs=trend.map((_,i)=>i);const mX=xs.reduce((a,b)=>a+b,0)/n;const mE=trend.reduce((a,t)=>a+t.expenses,0)/n;const mI=trend.reduce((a,t)=>a+t.income,0)/n;let nE=0,nI=0,d=0;for(let i=0;i<n;i++){nE+=(xs[i]-mX)*(trend[i].expenses-mE);nI+=(xs[i]-mX)*(trend[i].income-mI);d+=(xs[i]-mX)**2;}const sE=d?nE/d:0;const iE=mE-sE*mX;const sI=d?nI/d:0;const iI=mI-sI*mX;return[0,1,2].map(i=>{const x=n+i;const lm=trend[n-1].month;const[y,mo]=lm.split("-").map(Number);const nm=((mo-1+i+1)%12)+1;const ny=y+Math.floor((mo+i)/12);return{label:MNL[nm-1]+"'"+String(ny).slice(2),month:`${ny}-${String(nm).padStart(2,"0")}`,expenses:Math.max(0,Math.round(iE+sE*x)),income:Math.max(0,Math.round(iI+sI*x)),forecast:true};});},[trend]);
+  const mos=useMemo(()=>[...new Set(tx.map(t=>t.date.slice(0,7)))].sort().reverse(),[tx]);
+  const sr=st.income>0?st.balance/st.income:0;
+  const top5=useMemo(()=>{const m={};mTx.filter(t=>t.amount<0).forEach(t=>{const k=t.description.slice(0,30);m[k]=(m[k]||0)+Math.abs(t.amount);});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5);},[mTx]);
+  const daily=useMemo(()=>{const m={};mTx.filter(t=>t.amount<0).forEach(t=>{const d=parseInt(t.date.split("-")[2]);m[d]=(m[d]||0)+Math.abs(t.amount);});const r=[];let c=0;for(let d=1;d<=31;d++)if(m[d]!==undefined){c+=m[d];r.push({day:d,amount:Math.round(m[d]),cumulative:Math.round(c)});}return r;},[mTx]);
+  const filt=useMemo(()=>{let f=[...tx];if(fCat==="uncategorized")f=f.filter(t=>!t.category);else if(fCat!=="all")f=f.filter(t=>t.category===fCat);if(search)f=f.filter(t=>t.description.toLowerCase().includes(search.toLowerCase()));return f.slice(0,200);},[tx,fCat,search]);
+  const bData=useMemo(()=>cB.map(c=>({...c,budget:budgets[c.name]||0,pct:budgets[c.name]?c.value/budgets[c.name]:0})),[cB,budgets]);
+  const ml=(()=>{const[y,m]=selMonth.split("-");return`${FMNL[parseInt(m)-1]} ${y}`;})();
+
+  const KS=5;
+  useEffect(()=>{if(nestMode){kRef.current=setInterval(()=>setKSlide(p=>(p+1)%KS),12000);return()=>clearInterval(kRef.current);}else if(kRef.current)clearInterval(kRef.current);},[nestMode]);
+
+  // ═══ KIOSK ═══
+  if(nestMode){
+    const bAlerts=bData.filter(b=>b.budget>0&&b.pct>.8);
+    const dot=i=>({width:10,height:10,borderRadius:"50%",background:i===kSlide?"#a5b4fc":"rgba(255,255,255,0.15)",transition:"all .3s",cursor:"pointer"});
+    return <div style={{background:"linear-gradient(145deg,#0a0e1a,#111833,#0a0e1a)",color:"#e2e8f0",height:"100vh",fontFamily:"'DM Sans',sans-serif",overflow:"hidden",position:"relative"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 28px",borderBottom:"1px solid rgba(255,255,255,.05)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:22}}>💰</span><span style={{fontWeight:700,fontSize:16}}>FinanciëleFit</span><span style={{fontSize:11,opacity:.35,fontFamily:"'JetBrains Mono'",marginLeft:8}}>{new Date().toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"})}</span></div>
+        <div style={{display:"flex",gap:10,alignItems:"center"}}><div style={{display:"flex",gap:6}}>{Array.from({length:KS}).map((_,i)=><div key={i} style={dot(i)} onClick={()=>setKSlide(i)}/>)}</div><button onClick={()=>setNestMode(false)} style={{background:"rgba(255,255,255,.08)",border:"none",color:"#e2e8f0",padding:"6px 12px",borderRadius:8,cursor:"pointer",fontSize:12}}>✕</button></div>
+      </div>
+      <div style={{height:"calc(100vh - 56px)",padding:"20px 28px",overflow:"hidden"}} key={kSlide} className="ks">
+        {kSlide===0&&<div><div style={{fontSize:20,fontWeight:700,marginBottom:16}}>📊 Overzicht — {ml}</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:20}}>{[{l:"Inkomen",v:st.income,c:"#22c55e"},{l:"Uitgaven",v:st.expenses,c:"#ef4444"},{l:"Balans",v:st.balance,c:st.balance>=0?"#22c55e":"#ef4444"},{l:"Spaarquote",v:null,c:sr>=.2?"#22c55e":"#fbbf24",d:pct(sr)}].map((k,i)=><div key={i} style={{background:"rgba(255,255,255,.04)",borderRadius:14,padding:18,borderLeft:`4px solid ${k.c}`}}><div style={{fontSize:12,opacity:.5,marginBottom:4}}>{k.l}</div><div style={{fontSize:30,fontWeight:700,color:k.c,fontFamily:"'JetBrains Mono'"}}>{k.d||fmt(k.v)}</div></div>)}</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><div style={{background:"rgba(255,255,255,.03)",borderRadius:14,padding:14}}><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={cB.slice(0,6)} dataKey="value" cx="50%" cy="50%" outerRadius={75} innerRadius={38}>{cB.slice(0,6).map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip formatter={v=>fmt(v)} contentStyle={tts}/></PieChart></ResponsiveContainer></div><div style={{background:"rgba(255,255,255,.03)",borderRadius:14,padding:14}}><div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Top uitgaven</div>{top5.map(([d,v],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)",fontSize:12}}><span style={{opacity:.7,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"60%"}}>{d}</span><span style={{fontFamily:"'JetBrains Mono'",color:"#f87171",fontWeight:600}}>{fmt(v)}</span></div>)}</div></div></div>}
+        {kSlide===1&&<div><div style={{fontSize:20,fontWeight:700,marginBottom:16}}>🎯 Budget</div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>{Object.keys(cats).filter(c=>c!=="Inkomen"&&c!=="Overig"&&c!=="Sparen"&&budgets[c]).map(n=>{const sp=mTx.filter(t=>t.amount<0&&t.category===n).reduce((s,t)=>s+Math.abs(t.amount),0);const b=budgets[n];const r=sp/b;const co=r>1?"#ef4444":r>.8?"#fbbf24":"#22c55e";return<div key={n} style={{background:"rgba(255,255,255,.04)",borderRadius:12,padding:16}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontWeight:600}}>{cats[n]?.icon} {n}</span><span style={{color:co,fontWeight:700,fontSize:13}}>{Math.round(r*100)}%</span></div><div style={{height:8,background:"rgba(255,255,255,.06)",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(r*100,100)}%`,background:co,borderRadius:4}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:11,opacity:.5,marginTop:6}}><span>{fmt(sp)}</span><span>{fmt(b)}</span></div></div>;})}{!Object.keys(budgets).some(k=>budgets[k])&&<div style={{gridColumn:"1/-1",textAlign:"center",opacity:.4,padding:40}}>Geen budgetten</div>}</div></div>}
+        {kSlide===2&&<div><div style={{fontSize:20,fontWeight:700,marginBottom:16}}>🛟 Noodpotje</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"center"}}><div style={{textAlign:"center"}}><Gauge value={em.current} max={em.goal} color="#22c55e" size={200} label="bereikt"/><div style={{fontSize:18,fontWeight:700,color:"#22c55e",fontFamily:"'JetBrains Mono'",marginTop:8}}>{fmt(em.current)} <span style={{fontSize:13,opacity:.5,color:"#94a3b8"}}>/ {fmt(em.goal)}</span></div></div><div>{[{l:"Nog nodig",v:fmt(Math.max(0,em.goal-em.current)),c:"#2dd4bf"},{l:"Per maand",v:fmt(em.monthlyTarget),c:"#818cf8"},{l:"Maanden",v:emMo===0?"✅ Bereikt!":emMo===Infinity?"—":`${emMo}`,c:"#fbbf24"}].map((k,i)=><div key={i} style={{background:"rgba(255,255,255,.04)",borderRadius:12,padding:16,marginBottom:10}}><div style={{fontSize:12,opacity:.5}}>{k.l}</div><div style={{fontSize:24,fontWeight:700,color:k.c,fontFamily:"'JetBrains Mono'"}}>{k.v}</div></div>)}</div></div></div>}
+        {kSlide===3&&<div><div style={{fontSize:20,fontWeight:700,marginBottom:16}}>📋 Schulden</div>{debts.length>0?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}><div><div style={{background:"rgba(239,68,68,.1)",borderRadius:14,padding:18,marginBottom:12}}><div style={{fontSize:12,opacity:.5}}>Totaal</div><div style={{fontSize:30,fontWeight:700,color:"#ef4444",fontFamily:"'JetBrains Mono'"}}>{fmt(totD)}</div></div>{dFree&&<div style={{background:"rgba(34,197,94,.1)",borderRadius:14,padding:18,marginBottom:12}}><div style={{fontSize:12,opacity:.5}}>Schuldenvrij</div><div style={{fontSize:20,fontWeight:700,color:"#22c55e"}}>{dFree}</div></div>}{sDebts.map((d,i)=><div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,.04)",fontSize:13}}><span>{i===0?"🔴 ":"⚪ "}{d.name}</span><span style={{fontFamily:"'JetBrains Mono'",color:"#f87171"}}>{fmt(d.balance)}</span></div>)}</div><div style={{background:"rgba(255,255,255,.03)",borderRadius:14,padding:14}}><ResponsiveContainer width="100%" height={220}><AreaChart data={dTL}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)"/><XAxis dataKey="label" tick={{fill:"#94a3b8",fontSize:10}} axisLine={false}/><YAxis tick={{fill:"#94a3b8",fontSize:10}} axisLine={false} tickFormatter={v=>`€${(v/1000).toFixed(0)}k`}/><Tooltip contentStyle={tts} formatter={v=>fmt(v)}/><Area type="monotone" dataKey="total" fill="rgba(239,68,68,.15)" stroke="#ef4444" name="Restschuld"/></AreaChart></ResponsiveContainer></div></div>:<div style={{textAlign:"center",padding:60}}>🎉 Geen schulden!</div>}</div>}
+        {kSlide===4&&<div><div style={{fontSize:20,fontWeight:700,marginBottom:16}}>🔮 Trend & Forecast</div><ResponsiveContainer width="100%" height={320}><BarChart data={[...trend.slice(-6),...fc]}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)"/><XAxis dataKey="label" tick={{fill:"#94a3b8",fontSize:11}} axisLine={false}/><YAxis tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickFormatter={v=>`€${(v/1000).toFixed(0)}k`}/><Tooltip contentStyle={tts} formatter={v=>fmt(v)}/><Bar dataKey="income" fill="#22c55e" radius={[4,4,0,0]} name="Inkomen"/><Bar dataKey="expenses" fill="#ef4444" radius={[4,4,0,0]} name="Uitgaven"/><Legend/></BarChart></ResponsiveContainer></div>}
+      </div>
+      {bAlerts.length>0&&<div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(239,68,68,.1)",borderTop:"1px solid rgba(239,68,68,.2)",padding:"6px 28px",fontSize:12,display:"flex",gap:16}}><span style={{color:"#ef4444",fontWeight:700}}>⚠️</span>{bAlerts.map(b=><span key={b.name}>{cats[b.name]?.icon} {b.name}: {Math.round(b.pct*100)}%</span>)}</div>}
+    </div>;
+  }
+
+  // ═══ FULL APP ═══
+  return <div style={{background:"#0a0e1a",color:"#e2e8f0",minHeight:"100vh",fontFamily:"'DM Sans',sans-serif"}}>
+    {/* HEADER */}
+    <div style={{borderBottom:"1px solid rgba(255,255,255,.06)",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+      <div style={{display:"flex",alignItems:"center",gap:12}}><span style={{fontSize:28}}>💰</span><div><div style={{fontWeight:700,fontSize:18,letterSpacing:-.5}}>FinanciëleFit</div><div style={{fontSize:11,opacity:.5,fontFamily:"'JetBrains Mono'"}}>Huishoud Dashboard</div></div></div>
+      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+        <select value={selMonth} onChange={e=>setSelMonth(e.target.value)} style={{minWidth:140}}>{mos.map(m=><option key={m} value={m}>{FMNL[parseInt(m.split("-")[1])-1]} {m.split("-")[0]}</option>)}{mos.length===0&&<option value={selMonth}>{ml}</option>}</select>
+        <label className="bt bp" style={{cursor:"pointer"}}>📥 Import<input type="file" accept=".csv,.txt" onChange={handleImport} style={{display:"none"}}/></label>
+        <button className="bt bg" onClick={()=>{setNestMode(true);setKSlide(0);}}>📺 Kiosk</button>
+      </div>
+    </div>
+
+    {importMsg&&<div style={{margin:"12px 24px",padding:"12px 16px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:10,fontSize:13}}>{importMsg}</div>}
+    {uncat.length>0&&<div style={{margin:"12px 24px",padding:"12px 16px",background:"rgba(251,191,36,.12)",border:"1px solid rgba(251,191,36,.3)",borderRadius:10,fontSize:13,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>⚠️ {uncat.length} zonder categorie</span><button className="bt bg" onClick={()=>{setView("transactions");setFCat("uncategorized");}} style={{fontSize:12}}>Bekijken →</button></div>}
+
+    <div style={{display:"flex",gap:4,padding:"12px 24px",overflowX:"auto"}}>
+      {[["dashboard","📊 Dashboard"],["transactions","📋 Transacties"],["budget","🎯 Budget"],["emergency","🛟 Noodpotje"],["debts","📋 Schulden"],["forecast","🔮 Forecast"],["categories","🏷️ Categorieën"],["insights","💡 Inzichten"]].map(([k,l])=><div key={k} className={`ni ${view===k?"na":""}`} onClick={()=>setView(k)}>{l}</div>)}
+    </div>
+
+    <div style={{padding:"0 24px 24px"}}>
+      {/* DASHBOARD */}
+      {view==="dashboard"&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12}}>
+          {[{l:"Inkomen",v:st.income,c:"#22c55e",i:"📈"},{l:"Uitgaven",v:st.expenses,c:"#ef4444",i:"📉"},{l:"Balans",v:st.balance,c:st.balance>=0?"#22c55e":"#ef4444",i:st.balance>=0?"✅":"⚠️"},{l:"Spaarquote",v:null,c:sr>=.2?"#22c55e":"#fbbf24",i:"🏦",d:pct(sr)},{l:"Noodpotje",v:null,c:"#2dd4bf",i:"🛟",d:`${Math.round(em.current/Math.max(em.goal,1)*100)}%`,click:"emergency"},{l:"Schuld",v:totD,c:totD>0?"#f87171":"#22c55e",i:"📋",click:"debts"}].map((k,i)=><div key={i} className="cd" style={{borderLeft:`3px solid ${k.c}`,cursor:k.click?"pointer":"default"}} onClick={()=>k.click&&setView(k.click)}><div style={{fontSize:11,opacity:.6,marginBottom:4}}>{k.i} {k.l}</div><div style={{fontSize:20,fontWeight:700,color:k.c,fontFamily:"'JetBrains Mono'"}}>{k.d||fmt(k.v)}</div></div>)}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Uitgaven per categorie</div>{cB.length>0?<ResponsiveContainer width="100%" height={240}><PieChart><Pie data={cB} dataKey="value" cx="50%" cy="50%" outerRadius={90} innerRadius={45} paddingAngle={2}>{cB.map((e,i)=><Cell key={i} fill={e.color} stroke="transparent"/>)}</Pie><Tooltip formatter={v=>fmt(v)} contentStyle={tts}/></PieChart></ResponsiveContainer>:<div style={{height:240,display:"flex",alignItems:"center",justifyContent:"center",opacity:.4}}>Import CSV om te starten</div>}<div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}}>{cB.slice(0,6).map(c=><span key={c.name} className="tg" style={{background:`${c.color}20`,color:c.color}}>{c.icon} {c.name}: {fmt(c.value)}</span>)}</div></div>
+          <div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Maandoverzicht</div><ResponsiveContainer width="100%" height={270}><BarChart data={trend.slice(-6)}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)"/><XAxis dataKey="label" tick={{fill:"#94a3b8",fontSize:11}} axisLine={false}/><YAxis tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickFormatter={v=>`€${(v/1000).toFixed(0)}k`}/><Tooltip contentStyle={tts} formatter={v=>fmt(v)}/><Bar dataKey="income" fill="#22c55e" radius={[4,4,0,0]} name="Inkomen"/><Bar dataKey="expenses" fill="#ef4444" radius={[4,4,0,0]} name="Uitgaven"/><Legend/></BarChart></ResponsiveContainer></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16}}>
+          <div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Dagelijkse uitgaven</div><ResponsiveContainer width="100%" height={170}><AreaChart data={daily}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)"/><XAxis dataKey="day" tick={{fill:"#94a3b8",fontSize:10}} axisLine={false}/><YAxis tick={{fill:"#94a3b8",fontSize:10}} axisLine={false} tickFormatter={v=>`€${v}`}/><Tooltip contentStyle={tts} formatter={v=>fmt(v)}/><Area type="monotone" dataKey="cumulative" fill="rgba(99,102,241,.2)" stroke="#6366f1" name="Cumulatief"/><Area type="monotone" dataKey="amount" fill="rgba(244,114,182,.2)" stroke="#f472b6" name="Per dag"/></AreaChart></ResponsiveContainer></div>
+          <div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>🔥 Top 5</div>{top5.map(([d,v],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid rgba(255,255,255,.05)",fontSize:12}}><span style={{opacity:.8,maxWidth:"65%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d}</span><span style={{fontFamily:"'JetBrains Mono'",color:"#f87171",fontWeight:600}}>{fmt(v)}</span></div>)}{top5.length===0&&<div style={{opacity:.4,fontSize:13}}>Geen data</div>}</div>
+        </div>
+      </div>}
+
+      {/* TRANSACTIONS */}
+      {view==="transactions"&&<div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><input placeholder="🔍 Zoek..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:200}}/><select value={fCat} onChange={e=>setFCat(e.target.value)} style={{minWidth:160}}><option value="all">Alle</option><option value="uncategorized">⚠️ Zonder categorie</option>{Object.keys(cats).map(c=><option key={c} value={c}>{cats[c].icon} {c}</option>)}</select></div>
+        <div className="cd" style={{padding:0,overflow:"hidden"}}><div style={{maxHeight:500,overflowY:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:"rgba(255,255,255,.04)",position:"sticky",top:0}}>{["Datum","Omschrijving","Bedrag","Bron","Categorie",""].map((h,i)=><th key={i} style={{padding:"10px 12px",textAlign:"left",fontWeight:600,fontSize:11,opacity:.6,borderBottom:"1px solid rgba(255,255,255,.06)"}}>{h}</th>)}</tr></thead><tbody>{filt.map(t=><tr key={t.id} style={{borderBottom:"1px solid rgba(255,255,255,.03)"}}><td style={{padding:"8px 12px",fontFamily:"'JetBrains Mono'",fontSize:11,opacity:.7}}>{fD(t.date)}</td><td style={{padding:"8px 12px",maxWidth:240,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.description}</td><td style={{padding:"8px 12px",fontFamily:"'JetBrains Mono'",fontWeight:600,color:t.amount>=0?"#22c55e":"#f87171"}}>{fmt(t.amount)}</td><td style={{padding:"8px 12px"}}><span className="tg" style={{background:t.source==="SNS"?"rgba(251,146,60,.15)":"rgba(129,140,248,.15)",color:t.source==="SNS"?"#fb923c":"#818cf8"}}>{t.source}</span></td><td style={{padding:"8px 12px"}}>{t.category?<span className="tg" style={{background:`${cats[t.category]?.color||"#94a3b8"}20`,color:cats[t.category]?.color||"#94a3b8"}}>{cats[t.category]?.icon} {t.category}</span>:<span style={{opacity:.4}}>—</span>}</td><td style={{padding:"8px 12px"}}>{!t.category&&<button className="bt bg" style={{fontSize:11,padding:"4px 10px"}} onClick={()=>{setSelectedTx(t);setShowCatModal(true);}}>Categoriseer</button>}</td></tr>)}</tbody></table>{filt.length===0&&<div style={{padding:40,textAlign:"center",opacity:.4}}>Geen transacties</div>}</div></div>
+      </div>}
+
+      {/* BUDGET */}
+      {view==="budget"&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontWeight:600,fontSize:16}}>🎯 Budget — {ml}</div><button className="bt bp" onClick={()=>{setEditB({...budgets});setShowBM(true);}}>✏️ Instellen</button></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:12}}>
+          {Object.keys(cats).filter(c=>c!=="Inkomen"&&c!=="Overig"&&c!=="Sparen").map(n=>{const sp=mTx.filter(t=>t.amount<0&&t.category===n).reduce((s,t)=>s+Math.abs(t.amount),0);const b=budgets[n]||0;const r=b?sp/b:0;const co=r>1?"#ef4444":r>.8?"#fbbf24":"#22c55e";return<div key={n} className="cd"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{fontWeight:600,fontSize:14}}>{cats[n]?.icon} {n}</span>{b>0&&<span className="tg" style={{background:`${co}20`,color:co}}>{r>1?"⚠️ Over":r>.8?"⚡ Bijna":"✅ OK"}</span>}</div><div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6,opacity:.7}}><span>{fmt(sp)}</span><span>{b>0?fmt(b):"—"}</span></div><div style={{height:8,background:"rgba(255,255,255,.06)",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:b?`${Math.min(r*100,100)}%`:"0%",background:`linear-gradient(90deg,${cats[n]?.color},${co})`,borderRadius:4,transition:"width .5s"}}/></div>{b>0&&<div style={{fontSize:11,opacity:.5,marginTop:6,fontFamily:"'JetBrains Mono'"}}>{r<=1?`Nog ${fmt(b-sp)}`:`${fmt(sp-b)} over budget`}</div>}</div>;})}
+        </div>
+      </div>}
+
+      {/* EMERGENCY */}
+      {view==="emergency"&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontWeight:600,fontSize:16}}>🛟 Noodpotje</div><button className="bt bp" onClick={()=>setShowEM(true)}>⚙️ Instellingen</button></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+          <div className="cd" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gridRow:"1/3"}}>
+            <Gauge value={em.current} max={em.goal} color="#22c55e" size={180} label="bereikt"/>
+            <div style={{fontSize:20,fontWeight:700,color:"#22c55e",fontFamily:"'JetBrains Mono'",marginTop:8}}>{fmt(em.current)}</div>
+            <div style={{fontSize:12,opacity:.5}}>van {fmt(em.goal)}</div>
+            <div style={{display:"flex",gap:6,marginTop:16,width:"100%"}}><input type="number" placeholder="€" value={emIn} onChange={e=>setEmIn(e.target.value)} style={{flex:1,textAlign:"right"}}/><button className="bt bp" style={{fontSize:11}} onClick={()=>{const v=parseFloat(emIn);if(v>0){addEmE(v,"deposit");setEmIn("");}}}>+ Stort</button><button className="bt bd" style={{fontSize:11}} onClick={()=>{const v=parseFloat(emIn);if(v>0){addEmE(v,"withdraw");setEmIn("");}}}>- Opname</button></div>
+          </div>
+          <div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>🏆 Milestones</div>{[{l:"1 mnd buffer",t:st.expenses||2000},{l:"3 mnd buffer",t:(st.expenses||2000)*3},{l:"6 mnd buffer",t:(st.expenses||2000)*6},{l:"Doel bereikt",t:em.goal}].map((m,i)=>{const ok=em.current>=m.t;return<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.04)"}}><span style={{fontSize:16}}>{ok?"✅":"⬜"}</span><div style={{flex:1}}><div style={{fontSize:12,fontWeight:ok?600:400,opacity:ok?1:.6}}>{m.l}</div><div style={{fontSize:11,opacity:.4,fontFamily:"'JetBrains Mono'"}}>{fmt(m.t)}</div></div></div>;})}</div>
+          <div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>📈 Prognose</div>{[{l:"Per maand",v:fmt(em.monthlyTarget),c:"#818cf8"},{l:"Maanden tot doel",v:emMo===0?"✅ Bereikt!":emMo===Infinity?"—":`${emMo} mnd`,c:"#fbbf24"},{l:"Doeldatum",v:emMo>0&&emMo<Infinity?(()=>{const d=new Date();d.setMonth(d.getMonth()+emMo);return`${FMNL[d.getMonth()]} ${d.getFullYear()}`;})():"—",c:"#22c55e"}].map((k,i)=><div key={i} style={{background:"rgba(255,255,255,.03)",borderRadius:10,padding:14,marginBottom:8}}><div style={{fontSize:11,opacity:.5}}>{k.l}</div><div style={{fontSize:18,fontWeight:700,color:k.c,fontFamily:"'JetBrains Mono'"}}>{k.v}</div></div>)}</div>
+        </div>
+        {em.history.length>0&&<div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>📋 Geschiedenis</div><div style={{maxHeight:180,overflowY:"auto"}}>{em.history.map((h,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)",fontSize:12}}><span style={{fontFamily:"'JetBrains Mono'",opacity:.6}}>{fD(h.date)}</span><span style={{color:h.amount>0?"#22c55e":"#ef4444",fontFamily:"'JetBrains Mono'",fontWeight:600}}>{h.amount>0?"+":""}{fmt(h.amount)}</span><span style={{opacity:.5}}>Saldo: {fmt(h.balance)}</span></div>)}</div></div>}
+      </div>}
+
+      {/* DEBTS */}
+      {view==="debts"&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+          <div style={{fontWeight:600,fontSize:16}}>📋 Schuld Aflosplan</div>
+          <div style={{display:"flex",gap:8}}><select value={dStrat} onChange={e=>setDStrat(e.target.value)} style={{fontSize:12}}><option value="avalanche">🏔️ Avalanche</option><option value="snowball">⛄ Snowball</option></select><button className="bt bp" onClick={()=>{setDIn({name:"",balance:"",rate:"",minPayment:"",type:"lening"});setShowDM(true);}}>+ Schuld</button></div>
+        </div>
+        {debts.length>0?<div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12}}>{[{l:"Totaal",v:fmt(totD),c:"#ef4444"},{l:"Min/mnd",v:fmt(totM),c:"#fb923c"},{l:"Schuldenvrij",v:dFree||"—",c:"#22c55e"},{l:"Strategie",v:dStrat==="avalanche"?"🏔️ Avalanche":"⛄ Snowball",c:"#818cf8"}].map((k,i)=><div key={i} className="cd" style={{borderLeft:`3px solid ${k.c}`}}><div style={{fontSize:11,opacity:.6,marginBottom:4}}>{k.l}</div><div style={{fontSize:18,fontWeight:700,color:k.c,fontFamily:"'JetBrains Mono'"}}>{k.v}</div></div>)}</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>{sDebts.map((d,idx)=><div key={d.id} className="cd" style={{borderLeft:`3px solid ${idx===0?"#ef4444":"rgba(255,255,255,.1)"}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><div><div style={{fontWeight:600,fontSize:14}}>{d.name}</div><span className="tg" style={{background:"rgba(255,255,255,.06)",marginTop:4}}>{d.type}</span></div><div style={{display:"flex",gap:4}}>{idx===0&&<span className="tg" style={{background:"rgba(239,68,68,.15)",color:"#ef4444"}}>#1</span>}<button className="bt bg" style={{fontSize:10,padding:"4px 8px"}} onClick={()=>setDebts(p=>p.filter(x=>x.id!==d.id))}>✕</button></div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,fontSize:12}}><div><div style={{opacity:.5}}>Saldo</div><div style={{fontWeight:700,color:"#ef4444",fontFamily:"'JetBrains Mono'"}}>{fmt(d.balance)}</div></div><div><div style={{opacity:.5}}>Rente</div><div style={{fontWeight:700,color:"#fbbf24",fontFamily:"'JetBrains Mono'"}}>{d.rate}%</div></div><div><div style={{opacity:.5}}>Min/mnd</div><div style={{fontWeight:700,fontFamily:"'JetBrains Mono'"}}>{fmt(d.minPayment)}</div></div></div><div style={{display:"flex",gap:6,marginTop:10}}><input type="number" placeholder="Aflossing" style={{flex:1,fontSize:11,padding:"4px 8px"}} id={`dp-${d.id}`}/><button className="bt bg" style={{fontSize:11}} onClick={()=>{const el=document.getElementById(`dp-${d.id}`);const v=parseFloat(el?.value);if(v>0){setDebts(p=>p.map(x=>x.id===d.id?{...x,balance:Math.max(0,x.balance-v)}:x));if(el)el.value="";}}}>Aflossen</button></div></div>)}</div>
+          {dTL.length>0&&<div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>📉 Aflospad</div><ResponsiveContainer width="100%" height={240}><AreaChart data={dTL}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)"/><XAxis dataKey="label" tick={{fill:"#94a3b8",fontSize:10}} axisLine={false}/><YAxis tick={{fill:"#94a3b8",fontSize:10}} axisLine={false} tickFormatter={v=>`€${(v/1000).toFixed(0)}k`}/><Tooltip contentStyle={tts} formatter={v=>fmt(v)}/><Area type="monotone" dataKey="total" fill="rgba(239,68,68,.15)" stroke="#ef4444" strokeWidth={2} name="Restschuld"/></AreaChart></ResponsiveContainer></div>}
+        </div>:<div className="cd" style={{textAlign:"center",padding:60}}><div style={{fontSize:48,marginBottom:16}}>🎉</div><div style={{fontSize:18,fontWeight:600}}>Geen schulden!</div></div>}
+      </div>}
+
+      {/* FORECAST */}
+      {view==="forecast"&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div className="cd"><div style={{fontWeight:600,fontSize:16,marginBottom:16}}>🔮 Forecast</div>{trend.length>=2?<ResponsiveContainer width="100%" height={270}><LineChart data={[...trend.slice(-6),...fc]}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)"/><XAxis dataKey="label" tick={{fill:"#94a3b8",fontSize:11}} axisLine={false}/><YAxis tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickFormatter={v=>`€${(v/1000).toFixed(0)}k`}/><Tooltip contentStyle={tts} formatter={v=>fmt(v)}/><Line type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} dot={{r:3}} name="Inkomen"/><Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} dot={{r:3}} name="Uitgaven"/><Legend/></LineChart></ResponsiveContainer>:<div style={{padding:40,textAlign:"center",opacity:.4}}>Min. 2 maanden data</div>}</div>
+        {fc.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>{fc.map(f=><div key={f.month} className="cd" style={{borderTop:`3px solid ${f.income-f.expenses>=0?"#22c55e":"#ef4444"}`}}><div style={{fontSize:12,opacity:.6,marginBottom:8}}>📅 {FMNL[parseInt(f.month.split("-")[1])-1]}</div>{[["Inkomen",f.income,"#22c55e"],["Uitgaven",f.expenses,"#ef4444"]].map(([l,v,c])=><div key={l} style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:12}}><span>{l}</span><span style={{fontFamily:"'JetBrains Mono'",color:c,fontWeight:600}}>{fmt(v)}</span></div>)}<div style={{borderTop:"1px solid rgba(255,255,255,.1)",paddingTop:6,marginTop:6,display:"flex",justifyContent:"space-between"}}><span style={{fontSize:12,fontWeight:600}}>Balans</span><span style={{fontFamily:"'JetBrains Mono'",color:f.income-f.expenses>=0?"#22c55e":"#ef4444",fontWeight:700}}>{fmt(f.income-f.expenses)}</span></div></div>)}</div>}
+      </div>}
+
+      {/* CATEGORIES */}
+      {view==="categories"&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+          <div style={{fontWeight:600,fontSize:16}}>🏷️ Categorieën</div>
+          <div style={{display:"flex",gap:8}}><input placeholder="Naam" value={newCN} onChange={e=>setNewCN(e.target.value)} style={{width:130}}/><input placeholder="Keyword" value={newCK} onChange={e=>setNewCK(e.target.value)} style={{width:110}}/><button className="bt bp" onClick={()=>{if(newCN.trim()){mkCat(newCN.trim(),newCK.trim());setNewCN("");setNewCK("");}}}> +</button></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:12}}>{Object.entries(cats).map(([n,c])=><div key={n} className="cd"><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><span style={{fontSize:20}}>{c.icon}</span><span style={{fontWeight:600,fontSize:14}}>{n}</span><div style={{width:12,height:12,borderRadius:"50%",background:c.color,marginLeft:"auto"}}/></div><div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>{c.keywords.slice(0,10).map((k,i)=><span key={i} className="tg" style={{background:"rgba(255,255,255,.06)",fontSize:10}}>{k}</span>)}{c.keywords.length>10&&<span style={{fontSize:10,opacity:.5}}>+{c.keywords.length-10}</span>}</div><input placeholder="+ keyword (Enter)" style={{width:"100%",fontSize:11,padding:"4px 8px"}} onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim()){addKw(n,e.target.value.trim());e.target.value="";}}}/></div>)}</div>
+      </div>}
+
+      {/* INSIGHTS */}
+      {view==="insights"&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div className="cd"><div style={{fontWeight:600,fontSize:16,marginBottom:12}}>💡 Inzichten</div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
+          <div style={{background:"rgba(34,197,94,.08)",borderRadius:12,padding:16}}><div style={{fontSize:13,fontWeight:600,marginBottom:8}}>🏦 Spaarquote</div><div style={{fontSize:26,fontWeight:700,color:sr>=.2?"#22c55e":"#fbbf24",fontFamily:"'JetBrains Mono'"}}>{pct(sr)}</div></div>
+          <div style={{background:"rgba(99,102,241,.08)",borderRadius:12,padding:16}}><div style={{fontSize:13,fontWeight:600,marginBottom:8}}>📊 50/30/20</div>{(()=>{const needs=mTx.filter(t=>t.amount<0&&["Wonen","Energie","Verzekeringen","Boodschappen","Transport","Gezondheid"].includes(t.category)).reduce((s,t)=>s+Math.abs(t.amount),0);const wants=mTx.filter(t=>t.amount<0&&["Horeca","Abonnementen","Kleding","Kinderen"].includes(t.category)).reduce((s,t)=>s+Math.abs(t.amount),0);const tot=st.income||1;return<div>{[["Nodig 50%",needs/tot,.5],["Wensen 30%",wants/tot,.3],["Sparen 20%",sr,.2]].map(([l,v,t],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}><span>{l}</span><span style={{fontFamily:"'JetBrains Mono'",color:Math.abs(v)>t?"#ef4444":"#22c55e"}}>{pct(v)}</span></div>)}</div>;})()}</div>
+          <div style={{background:"rgba(45,212,191,.08)",borderRadius:12,padding:16}}><div style={{fontSize:13,fontWeight:600,marginBottom:8}}>🛟 Noodpotje</div><div style={{fontSize:26,fontWeight:700,color:em.current>=em.goal?"#22c55e":"#fbbf24",fontFamily:"'JetBrains Mono'"}}>{fmt(em.current)}</div></div>
+        </div></div>
+        <div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>📥 Export instructies</div><div style={{fontSize:13,opacity:.8,lineHeight:1.7}}><div style={{background:"rgba(251,146,60,.08)",borderRadius:10,padding:14,marginBottom:8}}><strong style={{color:"#fb923c"}}>SNS:</strong> Mijn SNS → Betaalrekening → Transacties → Download CSV</div><div style={{background:"rgba(129,140,248,.08)",borderRadius:10,padding:14}}><strong style={{color:"#818cf8"}}>ICS:</strong> Mijn ICS → Transacties → Export CSV</div></div></div>
+        <div className="cd"><div style={{fontWeight:600,fontSize:14,marginBottom:12}}>🗑️ Data</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button className="bt bd" onClick={()=>{if(confirm("Alle transacties wissen?")){setTx([]);}}}>Transacties</button><button className="bt bg" style={{color:"#fbbf24"}} onClick={()=>setCats(CATS)}>Reset categorieën</button><button className="bt bd" onClick={()=>{if(confirm("Noodpotje reset?")){setEm({goal:5000,current:0,monthlyTarget:200,history:[]});}}}>Noodpotje</button><button className="bt bd" onClick={()=>{if(confirm("Schulden wissen?")){setDebts([]);}}}>Schulden</button></div></div>
+      </div>}
+    </div>
+
+    {/* MODALS */}
+    {showCatModal&&selectedTx&&<div className="mo" onClick={()=>setShowCatModal(false)}><div className="mc" onClick={e=>e.stopPropagation()}>
+      <div style={{fontWeight:600,fontSize:16,marginBottom:16}}>🏷️ Categorie</div>
+      <div style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:12,marginBottom:16,fontSize:13}}><div style={{opacity:.6}}>Transactie:</div><div style={{fontWeight:600}}>{selectedTx.description}</div><div style={{fontFamily:"'JetBrains Mono'",color:selectedTx.amount>=0?"#22c55e":"#f87171"}}>{fmt(selectedTx.amount)} — {fD(selectedTx.date)}</div></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:16}}>{Object.entries(cats).map(([n,c])=><button key={n} className="bt bg" style={{textAlign:"left",padding:"10px 12px",display:"flex",alignItems:"center",gap:8}} onClick={()=>{asCat(selectedTx.id,n);setShowCatModal(false);setSelectedTx(null);}}><span>{c.icon}</span><span style={{fontSize:12}}>{n}</span></button>)}</div>
+      <div style={{borderTop:"1px solid rgba(255,255,255,.1)",paddingTop:12}}><div style={{fontSize:12,fontWeight:600,marginBottom:8,opacity:.6}}>Keyword-regel:</div><div style={{display:"flex",gap:8}}><input placeholder="Keyword" style={{flex:1}} defaultValue={selectedTx.description.split(" ").find(w=>w.length>3)?.toLowerCase()||""} id="mkw"/><select id="mcs" style={{minWidth:120}}>{Object.keys(cats).map(c=><option key={c} value={c}>{c}</option>)}</select><button className="bt bp" onClick={()=>{const kw=document.getElementById("mkw").value.trim();const cat=document.getElementById("mcs").value;if(kw&&cat){addKw(cat,kw);setShowCatModal(false);setSelectedTx(null);}}}>OK</button></div></div>
+    </div></div>}
+
+    {showBM&&<div className="mo" onClick={()=>setShowBM(false)}><div className="mc" onClick={e=>e.stopPropagation()}>
+      <div style={{fontWeight:600,fontSize:16,marginBottom:16}}>🎯 Maandbudget</div>
+      {Object.entries(cats).filter(([n])=>n!=="Inkomen"&&n!=="Overig"&&n!=="Sparen").map(([n,c])=><div key={n} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><span style={{width:24,textAlign:"center"}}>{c.icon}</span><span style={{width:120,fontSize:13}}>{n}</span><input type="number" value={editB[n]||""} placeholder="€0" onChange={e=>setEditB(p=>({...p,[n]:parseFloat(e.target.value)||0}))} style={{width:100,textAlign:"right"}}/></div>)}
+      <div style={{display:"flex",gap:8,marginTop:16,justifyContent:"flex-end"}}><button className="bt bg" onClick={()=>setShowBM(false)}>Annuleer</button><button className="bt bp" onClick={()=>{setBudgets(editB);setShowBM(false);}}>💾 Opslaan</button></div>
+    </div></div>}
+
+    {showEM&&<div className="mo" onClick={()=>setShowEM(false)}><div className="mc" onClick={e=>e.stopPropagation()}>
+      <div style={{fontWeight:600,fontSize:16,marginBottom:16}}>🛟 Noodpotje</div>
+      {[["Doel (€)","goal"],["Huidig saldo (€)","current"],["Per maand (€)","monthlyTarget"]].map(([l,k])=><div key={k} style={{marginBottom:12}}><label style={{fontSize:12,opacity:.6,display:"block",marginBottom:4}}>{l}</label><input type="number" value={em[k]} onChange={e=>setEm(p=>({...p,[k]:parseFloat(e.target.value)||0}))} style={{width:"100%"}}/></div>)}
+      <div style={{display:"flex",justifyContent:"flex-end"}}><button className="bt bp" onClick={()=>setShowEM(false)}>💾 OK</button></div>
+    </div></div>}
+
+    {showDM&&<div className="mo" onClick={()=>setShowDM(false)}><div className="mc" onClick={e=>e.stopPropagation()}>
+      <div style={{fontWeight:600,fontSize:16,marginBottom:16}}>💳 Schuld Toevoegen</div>
+      {[["Naam","name","text","bijv. ING lening"],["Type","type","select"],["Saldo (€)","balance","number","5000"],["Rente (% jaar)","rate","number","6.5"],["Min/mnd (€)","minPayment","number","150"]].map(([l,k,type,ph])=><div key={k} style={{marginBottom:12}}><label style={{fontSize:12,opacity:.6,display:"block",marginBottom:4}}>{l}</label>{type==="select"?<select value={dIn[k]} onChange={e=>setDIn(p=>({...p,[k]:e.target.value}))} style={{width:"100%"}}><option value="lening">Persoonlijke lening</option><option value="creditcard">Creditcard</option><option value="studielening">Studielening (DUO)</option><option value="hypotheek">Hypotheek</option><option value="doorlopend">Doorlopend krediet</option><option value="overig">Overig</option></select>:<input type={type} value={dIn[k]} onChange={e=>setDIn(p=>({...p,[k]:e.target.value}))} placeholder={ph} style={{width:"100%"}}/>}</div>)}
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><button className="bt bg" onClick={()=>setShowDM(false)}>Annuleer</button><button className="bt bp" onClick={()=>{if(dIn.name&&dIn.balance&&dIn.minPayment){setDebts(p=>[...p,{id:`d-${Date.now()}`,name:dIn.name,type:dIn.type,balance:parseFloat(dIn.balance),rate:parseFloat(dIn.rate)||0,minPayment:parseFloat(dIn.minPayment)}]);setShowDM(false);}}}>💾 Toevoegen</button></div>
+    </div></div>}
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
